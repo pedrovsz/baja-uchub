@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projeto Baja - SPA Completo</title>
+<style>
+  /* --- Corpo e Layout --- */
+  body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background:#eef2f5;
+    color:#111;
+  }
+
+  /* --- Sidebar --- */
+  .sidebar {
+    width:230px;
+    background:#002a5c;
+    height:100vh;
+    position:fixed;
+    top:0;
+    left:0;
+    padding-top:20px;
+    color:white;
+  }
+  .sidebar h2 {
+    text-align:center;
+    margin-bottom:20px;
+  }
+  .sidebar a {
+    display:block;
+    color:white;
+    padding:12px 20px;
+    text-decoration:none;
+    font-size:18px;
+    margin-bottom:5px;
+  }
+  .sidebar a:hover { background:#004aad; }
+
+  /* --- Conteúdo --- */
+  .content {
+    margin-left:260px;
+    padding:20px;
+    transition:margin-left 0.3s;
+  }
+
+  /* --- Cards --- */
+  .card {
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.2);
+    margin-bottom:20px;
+    transition:0.3s;
+  }
+  .card:hover {
+    transform:translateY(-5px);
+    box-shadow:0 4px 15px rgba(0,0,0,0.2);
+  }
+
+  /* --- Inputs e Botões --- */
+  input {
+    width:100%;
+    padding:10px;
+    margin:10px 0;
+    border-radius:5px;
+    border:1px solid #ccc;
+  }
+  button {
+    width:100%;
+    padding:12px;
+    background:#004aad;
+    border:none;
+    color:white;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+    transition:0.3s;
+    margin-top:5px;
+  }
+  button:hover { opacity:0.8; }
+
+  li {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:5px 0;
+  }
+  li button { width:auto; padding:5px 10px; font-size:14px; background:red; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+  <h2>BAJA</h2>
+  <a href="#" onclick="render('dashboard')">🏠 Dashboard</a>
+  <a href="#" onclick="render('pecas')">🔩 Peças</a>
+  <a href="#" onclick="render('equipe')">👥 Equipe</a>
+  <a href="#" onclick="render('etapas')">📌 Etapas</a>
+</div>
+
+<!-- Conteúdo -->
+<div class="content" id="app"></div>
+
+<script>
+/* ==================== Inicialização de dados ==================== */
+if(!localStorage.getItem('pecas')) localStorage.setItem('pecas', JSON.stringify([
+  {nome:'Chassi',valor:2500},
+  {nome:'Motor',valor:4500},
+  {nome:'Suspensão',valor:1500},
+  {nome:'Rodas',valor:800},
+  {nome:'Bancos',valor:600}
+]));
+if(!localStorage.getItem('equipe')) localStorage.setItem('equipe', JSON.stringify([
+  {nome:'Ana',funcao:'Piloto'},
+  {nome:'Bruno',funcao:'Suspensão'},
+  {nome:'Carlos',funcao:'Motor'},
+  {nome:'Diana',funcao:'Elétrica'}
+]));
+if(!localStorage.getItem('etapas')) localStorage.setItem('etapas', JSON.stringify([
+  {nome:'Projeto Chassi',status:'concluída'},
+  {nome:'Montagem Motor',status:'em andamento'},
+  {nome:'Instalação Elétrica',status:'pendente'},
+  {nome:'Teste de Suspensão',status:'pendente'}
+]));
+
+/* ==================== Funções Dashboard ==================== */
+function calcularOrcamento(){
+  let lista=JSON.parse(localStorage.getItem('pecas'))||[];
+  return lista.reduce((a,p)=>a+Number(p.valor),0);
+}
+function calcularProgresso(){
+  let lista=JSON.parse(localStorage.getItem('etapas'))||[];
+  if(lista.length===0)return 0;
+  let concluidas=lista.filter(e=>e.status.toLowerCase()==='concluída').length;
+  return Math.round((concluidas/lista.length)*100);
+}
+
+function atualizarResumo(){
+  const content=document.getElementById('app');
+  const orcamento=calcularOrcamento();
+  const progresso=calcularProgresso();
+  content.innerHTML=`
+    <div class="card">
+      <h3>Orçamento Total</h3>
+      <input type='number' id='editOrcamento' value='${orcamento}'>
+      <button onclick='salvarOrcamento()'>Salvar Orçamento</button>
+    </div>
+    <div class="card">
+      <h3>Progresso do Projeto</h3>
+      <input type='number' id='editProgresso' value='${progresso}'>
+      <button onclick='salvarProgresso()'>Salvar Progresso</button>
+      <div style="background:#ccc;border-radius:5px;width:100%;height:20px;margin-top:5px;">
+        <div id='barraProgresso' style="background:#004aad;width:${progresso}%;height:100%;border-radius:5px;"></div>
+      </div>
+    </div>
+  `;
+}
+
+function salvarOrcamento(){
+  let novoValor=parseFloat(document.getElementById('editOrcamento').value);
+  if(isNaN(novoValor)) return;
+  let lista=JSON.parse(localStorage.getItem('pecas'))||[];
+  if(lista.length>0){
+    let fator=novoValor/calcularOrcamento();
+    lista=lista.map(p=>({nome:p.nome,valor:Math.round(p.valor*fator)}));
+    localStorage.setItem('pecas',JSON.stringify(lista));
+  }
+  atualizarResumo();
+}
+
+function salvarProgresso(){
+  let novoValor=parseInt(document.getElementById('editProgresso').value);
+  if(isNaN(novoValor)) return;
+  let lista=JSON.parse(localStorage.getItem('etapas'))||[];
+  let total=lista.length;
+  let concluidas=Math.round((novoValor/100)*total);
+  for(let i=0;i<total;i++) lista[i].status=(i<concluidas)?'concluída':'pendente';
+  localStorage.setItem('etapas',JSON.stringify(lista));
+  atualizarResumo();
+}
+
+/* ==================== Funções SPA ==================== */
+function render(page){
+  switch(page){
+    case 'dashboard': atualizarResumo(); break;
+    case 'pecas': renderPecas(); break;
+    case 'equipe': renderEquipe(); break;
+    case 'etapas': renderEtapas(); break;
+  }
+}
+
+/* --- Renderizações específicas --- */
+function renderPecas(){
+  let lista=JSON.parse(localStorage.getItem('pecas'))||[];
+  let html='<div class="card"><h3>Peças</h3><ul>';
+  lista.forEach((p,i)=>html+=`<li>${p.nome} - R$${p.valor} <button onclick="removerPeca(${i})">Excluir</button></li>`);
+  html+='</ul></div><div class="card"><h3>Adicionar Peça</h3><input id="novaPecaNome" placeholder="Nome"><input id="novaPecaValor" type="number" placeholder="Valor"><button onclick="adicionarPeca()">Adicionar</button></div>';
+  document.getElementById('app').innerHTML=html;
+}
+
+function renderEquipe(){
+  let lista=JSON.parse(localStorage.getItem('equipe'))||[];
+  let html='<div class="card"><h3>Equipe</h3><ul>';
+  lista.forEach((m,i)=>html+=`<li>${m.nome} - ${m.funcao} <button onclick="removerMembro(${i})">Excluir</button></li>`);
+  html+='</ul></div><div class="card"><h3>Adicionar Membro</h3><input id="novoMembroNome" placeholder="Nome"><input id="novoMembroFuncao" placeholder="Função"><button onclick="adicionarMembro()">Adicionar</button></div>';
+  document.getElementById('app').innerHTML=html;
+}
+
+function renderEtapas(){
+  let lista=JSON.parse(localStorage.getItem('etapas'))||[];
+  let html='<div class="card"><h3>Etapas</h3><ul>';
+  lista.forEach((e,i)=>html+=`<li>${e.nome} - ${e.status} <button onclick="removerEtapa(${i})">Excluir</button></li>`);
+  html+='</ul></div><div class="card"><h3>Adicionar Etapa</h3><input id="novaEtapaNome" placeholder="Nome da Etapa"><button onclick="adicionarEtapa()">Adicionar</button></div>';
+  document.getElementById('app').innerHTML=html;
+}
+
+/* ==================== CRUD ==================== */
+function adicionarPeca(){ let n=document.getElementById('novaPecaNome').value; let v=parseFloat(document.getElementById('novaPecaValor').value); if(!n||isNaN(v)) return alert('Preencha corretamente.'); let l=JSON.parse(localStorage.getItem('pecas'))||[]; l.push({nome:n,valor:v}); localStorage.setItem('pecas',JSON.stringify(l)); renderPecas();}
+function removerPeca(i){ let l=JSON.parse(localStorage.getItem('pecas'))||[]; l.splice(i,1); localStorage.setItem('pecas',JSON.stringify(l)); renderPecas();}
+function adicionarMembro(){ let n=document.getElementById('novoMembroNome').value; let f=document.getElementById('novoMembroFuncao').value; if(!n||!f) return alert('Preencha corretamente.'); let l=JSON.parse(localStorage.getItem('equipe'))||[]; l.push({nome:n,funcao:f}); localStorage.setItem('equipe',JSON.stringify(l)); renderEquipe();}
+function removerMembro(i){ let l=JSON.parse(localStorage.getItem('equipe'))||[]; l.splice(i,1); localStorage.setItem('equipe',JSON.stringify(l)); renderEquipe();}
+function adicionarEtapa(){ let n=document.getElementById('novaEtapaNome').value; if(!n) return alert('Preencha o nome da etapa.'); let l=JSON.parse(localStorage.getItem('etapas'))||[]; l.push({nome:n,status:'pendente'}); localStorage.setItem('etapas',JSON.stringify(l)); renderEtapas();}
+function removerEtapa(i){ let l=JSON.parse(localStorage.getItem('etapas'))||[]; l.splice(i,1); localStorage.setItem('etapas',JSON.stringify(l)); renderEtapas();}
+
+/* ==================== Inicialização Direta ==================== */
+render('dashboard');
+</script>
+</body>
+</html>
